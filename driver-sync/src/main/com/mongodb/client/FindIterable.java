@@ -249,4 +249,17 @@ public interface FindIterable<TResult> extends MongoIterable<TResult> {
      */
     @Deprecated
     FindIterable<TResult> snapshot(boolean snapshot);
+
+    /**
+     * Sets the exhaust.
+     *
+     * If true, then the returned cursor will be an exhaust cursor following the execution of the operation. If executing
+     * on a server that doesn't support exhaust cursors, this property is ignored.
+     *
+     * @param exhaust the exhaust
+     * @return this
+     * @since 3.9
+     * @mongodb.server.release 4.2
+     */
+    FindIterable<TResult> exhaust(boolean exhaust);
 }

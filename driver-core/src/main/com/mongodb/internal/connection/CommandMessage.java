@@ -63,6 +63,7 @@ public final class CommandMessage extends RequestMessage {
     private final FieldNameValidator payloadFieldNameValidator;
     private final boolean responseExpected;
     private final ClusterConnectionMode clusterConnectionMode;
+    private final boolean exhaust;
 
     CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
                    final ReadPreference readPreference, final MessageSettings settings) {
@@ -74,6 +75,14 @@ public final class CommandMessage extends RequestMessage {
                    final ReadPreference readPreference, final MessageSettings settings, final boolean responseExpected,
                    final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator,
                    final ClusterConnectionMode clusterConnectionMode) {
+        this(namespace, command, commandFieldNameValidator, readPreference, settings, responseExpected, payload, payloadFieldNameValidator,
+                clusterConnectionMode, false);
+    }
+
+    CommandMessage(final MongoNamespace namespace, final BsonDocument command, final FieldNameValidator commandFieldNameValidator,
+                   final ReadPreference readPreference, final MessageSettings settings, final boolean responseExpected,
+                   final SplittablePayload payload, final FieldNameValidator payloadFieldNameValidator,
+                   final ClusterConnectionMode clusterConnectionMode, final boolean exhaust) {
         super(namespace.getFullName(), getOpCode(settings), settings);
         this.namespace = namespace;
         this.command = command;
@@ -83,6 +92,7 @@ public final class CommandMessage extends RequestMessage {
         this.payload = payload;
         this.payloadFieldNameValidator = payloadFieldNameValidator;
         this.clusterConnectionMode = clusterConnectionMode;
+        this.exhaust = exhaust;
     }
 
     BsonDocument getCommandDocument(final ByteBufferBsonOutput bsonOutput) {
@@ -184,7 +194,9 @@ public final class CommandMessage extends RequestMessage {
     }
 
     private int getOpMsgResponseExpectedFlagBit() {
-        if (requireOpMsgResponse()) {
+        if (exhaust) {
+            return 1 << 16;
+        } else if (requireOpMsgResponse()) {
             return 0;
         } else {
             return 1 << 1;
@@ -273,5 +285,4 @@ public final class CommandMessage extends RequestMessage {
     private static boolean isServerVersionAtLeastThreeDotSix(final MessageSettings settings) {
         return settings.getServerVersion().compareTo(new ServerVersion(3, 6)) >= 0;
     }
-
 }

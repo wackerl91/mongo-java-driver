@@ -32,17 +32,21 @@ import org.bson.BsonString
 import org.bson.Document
 import org.bson.codecs.BsonDocumentCodec
 import spock.lang.Specification
+import spock.lang.Unroll
 
 class QueryBatchCursorSpecification extends Specification {
-    def 'should generate expected command with batchSize and maxTimeMS'() {
+    @Unroll
+    def 'should generate expected command and release connection with batchSize, maxTimeMS, and exhaust'() {
         given:
         def connection = Mock(Connection) {
             _ * getDescription() >> Stub(ConnectionDescription) {
-                getServerVersion() >> new ServerVersion([3, 2, 0])
+                getServerVersion() >> serverVersion
             }
         }
+        connection.retain() >> connection
+
         def connectionSource = Stub(ConnectionSource) {
-            getConnection() >> { connection }
+            _ * getConnection() >> { connection }
         }
         connectionSource.retain() >> connectionSource
 
@@ -53,8 +57,8 @@ class QueryBatchCursorSpecification extends Specification {
         def namespace = new MongoNamespace(database, collection)
         def firstBatch = new QueryResult(namespace, [], cursorId, new ServerAddress())
         def cursor = new QueryBatchCursor<Document>(firstBatch, 0, batchSize, maxTimeMS, new BsonDocumentCodec(), connectionSource,
-                                                    connection)
-        def expectedCommand = new BsonDocument('getMore': new BsonInt64(cursorId))
+                                                    connection, exhaust)
+        def expectedCommand = new BsonDocument('getMore', new BsonInt64(cursorId))
                 .append('collection', new BsonString(collection))
         if (batchSize != 0) {
             expectedCommand.append('batchSize', new BsonInt32(batchSize))
@@ -73,7 +77,7 @@ class QueryBatchCursorSpecification extends Specification {
         cursor.hasNext()
 
         then:
-        1 * connection.command(database, expectedCommand, _, _, _, _) >> {
+        1 * connection.command(database, expectedCommand, _, _, _, _, _) >> {
             reply
         }
         1 * connection.release()
@@ -83,6 +87,9 @@ class QueryBatchCursorSpecification extends Specification {
         0          | 0          | null
         2          | 0          | null
         0          | 100        | 100
+
+        exhaust << [true, false, true]
+        serverVersion << [new ServerVersion([3, 2, 0]), new ServerVersion([4, 1, 3]), new ServerVersion([4, 1, 3])]
     }
 
     def 'should handle exceptions when closing'() {

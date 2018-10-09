@@ -26,7 +26,9 @@ import com.mongodb.WriteConcern
 import com.mongodb.binding.ConnectionSource
 import com.mongodb.client.model.CreateCollectionOptions
 import com.mongodb.connection.Connection
+import com.mongodb.connection.ConnectionDescription
 import com.mongodb.connection.QueryResult
+import com.mongodb.connection.ServerVersion
 import org.bson.BsonBoolean
 import org.bson.BsonDocument
 import org.bson.BsonInt32
@@ -559,6 +561,77 @@ class QueryBatchCursorFunctionalSpecification extends OperationFunctionalSpecifi
         cursor.next()
     }
 
+    def 'should not release connection if more results remain and exhaust set'() {
+        given:
+        def firstBatch = executeQuery(2)
+        def exhaustConnection = connectionSource.getConnection()
+
+        def connection = Mock(Connection) {
+            _ * getDescription() >> Stub(ConnectionDescription) {
+                getServerVersion() >> new ServerVersion([4, 1, 3])
+            }
+        }
+        connection.retain() >> exhaustConnection
+
+        def cursor = new QueryBatchCursor<Document>(firstBatch, 5, 2, 0, new DocumentCodec(), connectionSource, connection, true)
+
+        when:
+        cursor.hasNext()
+
+        then:
+        0 * connection.release()
+
+        cleanup:
+        exhaustConnection?.release()
+        connectionSource.release()
+    }
+
+    def 'should follow limit when exhaust set'() {
+        given:
+        def firstBatch = executeQuery(2)
+        def connection = connectionSource.getConnection()
+
+        when:
+        def cursor = new QueryBatchCursor<Document>(firstBatch, 5, 3, 0, new DocumentCodec(), connectionSource, connection, true)
+
+        then:
+        cursor.iterator().sum { it.size } == 5
+
+        cleanup:
+        connection?.release()
+    }
+
+    def 'should exhaust cursor when exhaust is set'() {
+        given:
+        def firstBatch = executeQuery(3)
+        def connection = connectionSource.getConnection()
+
+        when:
+        def cursor = new QueryBatchCursor<Document>(firstBatch, 10, 2, 0, new DocumentCodec(), connectionSource, connection, true)
+
+        then:
+        cursor.iterator().sum { it.size } == 10
+
+        cleanup:
+        connection?.release()
+    }
+
+    def 'should release connection source if limit is reached on get more when exhaust set'() throws InterruptedException {
+        given:
+        def firstBatch = executeQuery(3)
+        def connection = connectionSource.getConnection()
+        def cursor = new QueryBatchCursor<Document>(firstBatch, 5, 3, 0, new DocumentCodec(), connectionSource, connection, true)
+
+        when:
+        cursor.next()
+        cursor.next()
+
+        then:
+        checkReferenceCountReachesTarget(connectionSource, 1)
+
+        cleanup:
+        connection?.release()
+    }
 
     private QueryResult<Document> executeQuery() {
         executeQuery(0)

@@ -56,6 +56,7 @@ public final class FindOptions {
     private boolean returnKey;
     private boolean showRecordId;
     private boolean snapshot;
+    private boolean exhaust;
 
     /**
      * Construct a new instance.
@@ -90,6 +91,7 @@ public final class FindOptions {
         returnKey = from.returnKey;
         showRecordId = from.showRecordId;
         snapshot = from.snapshot;
+        exhaust = from.exhaust;
     }
 
     /**
@@ -608,6 +610,36 @@ public final class FindOptions {
         return this;
     }
 
+    /**
+     * Returns the exhaust.
+     *
+     * Determines whether the returned cursor from operation execution will be an exhaust cursor. If executing on a server
+     * that doesn't support exhaust cursors, this property is ignored.
+     *
+     * @return the exhaust
+     * @since 3.9
+     * @mongodb.server.release 4.2
+     */
+    public boolean isExhaust() {
+        return exhaust;
+    }
+
+    /**
+     * Sets the exhaust.
+     *
+     * If true, then the returned cursor will be an exhaust cursor following the execution of the operation. If executing
+     * on a server that doesn't support exhaust cursors, this property is ignored.
+     *
+     * @param exhaust the exhaust
+     * @return this
+     * @since 3.9
+     * @mongodb.server.release 4.2
+     */
+    public FindOptions exhaust(final boolean exhaust) {
+        this.exhaust = exhaust;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "FindOptions{"
@@ -632,6 +664,7 @@ public final class FindOptions {
                 + ", returnKey=" + returnKey
                 + ", showRecordId=" + showRecordId
                 + ", snapshot=" + snapshot
+                + ", exhaust=" + exhaust
                 + "}";
     }
 }

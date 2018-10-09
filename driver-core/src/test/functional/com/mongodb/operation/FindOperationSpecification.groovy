@@ -96,6 +96,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         !operation.isOplogReplay()
         !operation.isPartial()
         !operation.isSlaveOk()
+        !operation.isExhaust()
     }
 
     def 'should set optional values correctly'() {
@@ -120,6 +121,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
                 .slaveOk(true)
                 .oplogReplay(true)
                 .noCursorTimeout(true)
+                .exhaust(true)
 
         then:
         operation.getFilter() == filter
@@ -135,6 +137,7 @@ class FindOperationSpecification extends OperationFunctionalSpecification {
         operation.isOplogReplay()
         operation.isPartial()
         operation.isSlaveOk()
+        operation.isExhaust()
     }
 
     def 'should query with default values'() {
